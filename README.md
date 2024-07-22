@@ -1,71 +1,60 @@
-# fixit README
+# FixIt - Stack Trace Analysis for VSCode
 
-This is the README for your extension "fixit". After writing up a brief description, we recommend including the following sections.
+FixIt is a Visual Studio Code extension that helps developers quickly analyze and fix errors by providing intelligent recommendations based on stack traces.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- Automatically analyze stack traces from various programming languages
+- Extract relevant code snippets from your project files
+- Generate fix recommendations using AI-powered analysis
+- Display results in a dedicated output channel for easy viewing
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Visual Studio Code version 1.91.0 or higher
+- An OpenAI API key (to be configured in the extension settings)
+
+## Installation
+
+1. Install the FixIt extension from the Visual Studio Code Marketplace
+2. Restart Visual Studio Code
+3. Configure your OpenAI API key in the extension settings
+
+## Usage
+
+1. Highlight a stack trace from a test failure/error in your terminal
+2. Right-click and choose "Analyze Stack Trace" from the context menu (or use the command palette)
+3. View the analysis results and fix recommendations in the "Stack Trace Analysis" output channel
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+* `fixit.apiKey`: Your OpenAI API key for FixIt to use for analysis
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- Currently, the extension may have difficulty parsing stack traces from less common programming languages or non-standard formats
+- Large projects with many files may experience slower performance during code extraction
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+Initial release of FixIt:
+- Support for analyzing stack traces from multiple languages including TypeScript, JavaScript, Python, Java, Go, SQL, C/C++, and C#
+- AI-powered fix recommendations
+- Relevant code extraction from project files
+- Customizable OpenAI API key setting
 
 ---
 
-## Following extension guidelines
+## Contributing
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+If you'd like to contribute to FixIt, please feel free to submit pull requests or open issues on our [GitHub repository](https://github.com/phyous/fixit).
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+## License
 
-## Working with Markdown
+This extension is licensed under the [MIT License](LICENSE.md).
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**Enjoy using FixIt to streamline your debugging process!**

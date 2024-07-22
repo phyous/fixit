@@ -12,6 +12,7 @@
   ],
   "activationEvents": [
     "onCommand:extension.analyzeStackTrace",
+    "onCommand:extension.analyzeStackTraceFromTerminal",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
@@ -20,6 +21,10 @@
       {
         "command": "extension.analyzeStackTrace",
         "title": "Analyze Stack Trace"
+      },
+      {
+        "command": "extension.analyzeStackTraceFromTerminal",
+        "title": "Analyze Stack Trace from Terminal"
       }
     ],
     "menus": {
@@ -27,6 +32,12 @@
         {
           "when": "editorHasSelection",
           "command": "extension.analyzeStackTrace",
+          "group": "navigation"
+        }
+      ],
+      "terminal/context": [
+        {
+          "command": "extension.analyzeStackTraceFromTerminal",
           "group": "navigation"
         }
       ]
