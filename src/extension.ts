@@ -134,10 +134,20 @@ async function analyzeStackTrace(llmClient: LlmClient, stackTrace: string) {
         console.log('Parsed stack frames:', stackFrames);
         const relevantCode = await extractRelevantCode(stackFrames);
         console.log('Extracted relevant code length:', relevantCode.length);
-        const fixRecommendation = await llmClient.getFixRecommendation(stackTrace, relevantCode);
-        console.log('Got fix recommendation');
-        displayResults(fixRecommendation);
-        console.log('Results displayed');
+
+        const outputChannel = vscode.window.createOutputChannel('Stack Trace Analysis');
+        outputChannel.clear();
+        outputChannel.show();
+        outputChannel.appendLine('Analyzing stack trace...');
+
+        const stream = await llmClient.getFixRecommendation(stackTrace, relevantCode);
+        
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            outputChannel.append(content);
+        }
+
+        console.log('Fix recommendation streamed to output channel');
     } catch (error) {
         console.error('Error in analyzeStackTrace:', error);
         vscode.window.showErrorMessage(`Error analyzing stack trace: ${error}`);
