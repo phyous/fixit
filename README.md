@@ -46,6 +46,9 @@ Initial release of FixIt:
 - AI-powered fix recommendations
 - Relevant code extraction from project files
 - Customizable OpenAI API key setting
+
+### Future features
+- Show outpot of plugin in dedicated webview
 ---
 
 ## Contributing
