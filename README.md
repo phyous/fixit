@@ -47,6 +47,8 @@ Initial release of FixIt:
 - Relevant code extraction from project files
 - Customizable OpenAI API key setting
 
+### Future features
+- Streaming LLM output for real-time analysis
 ---
 
 ## Contributing

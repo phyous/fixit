@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
-import { OpenAI } from 'openai';
+import * as path from 'path';
 import { LlmClient } from './llm';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -27,19 +27,30 @@ export function activate(context: vscode.ExtensionContext) {
         });
 
         // Register command for terminal
-        let terminalCommand = vscode.commands.registerCommand('extension.analyzeStackTraceFromTerminal', async () => {
-            console.log('Command extension.analyzeStackTraceFromTerminal triggered from terminal');
-            try {
-                const stackTrace = await vscode.env.clipboard.readText();
-                if (stackTrace.trim()) {
-                    await analyzeStackTrace(llmClient, stackTrace);
-                } else {
-                    vscode.window.showErrorMessage('No text found in clipboard. Please highlight and copy the stack trace first.');
-                }
-            } catch (error) {
-                vscode.window.showErrorMessage('Failed to read clipboard: ' + error);
-            }
-        });
+		let terminalCommand = vscode.commands.registerCommand('extension.analyzeStackTraceFromTerminal', async () => {
+			console.log('Command extension.analyzeStackTraceFromTerminal triggered from terminal');
+			try {
+				const activeTerminal = vscode.window.activeTerminal;
+				if (!activeTerminal) {
+					vscode.window.showErrorMessage('No active terminal found.');
+					return;
+				}
+		
+				// Request the terminal to copy the selection
+				await vscode.commands.executeCommand('workbench.action.terminal.copySelection');
+				
+				// Read from clipboard
+				const selection = await vscode.env.clipboard.readText();
+				
+				if (selection && selection.trim()) {
+					await analyzeStackTrace(llmClient, selection.trim());
+				} else {
+					vscode.window.showErrorMessage('No text selected in the terminal. Please highlight the stack trace first.');
+				}
+			} catch (error) {
+				vscode.window.showErrorMessage('Failed to read terminal selection: ' + error);
+			}
+		});
 
         context.subscriptions.push(editorCommand, terminalCommand);
         console.log('Extension activation completed.');
@@ -138,6 +149,10 @@ function parseStackTrace(stackTrace: string): { file: string; line: number; lang
     console.log('Parsing stack trace...');
     const lines = stackTrace.split('\n');
     console.log('Number of lines in stack trace:', lines.length);
+	// print the lines
+	lines.forEach(line => {
+		console.log(line);
+	});
 
     return lines
         .map(line => {
@@ -193,25 +208,37 @@ function parseStackTrace(stackTrace: string): { file: string; line: number; lang
 async function extractRelevantCode(stackFrames: { file: string; line: number }[]): Promise<string> {
     console.log('Entering extractRelevantCode function');
     let relevantCode = '';
-    for (const frame of stackFrames) {
-        const filePath = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
-            ? vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, frame.file).fsPath
-            : frame.file;
+    const fileCache: { [key: string]: string[] } = {};
 
-        console.log('Attempting to read file:', filePath);
-        try {
-            const fileContent = await fs.readFile(filePath, 'utf-8');
-            const lines = fileContent.split('\n');
-            const startLine = Math.max(0, frame.line - 5);
-            const endLine = Math.min(lines.length, frame.line + 5);
-            relevantCode += `File: ${frame.file}\n`;
-            relevantCode += lines.slice(startLine, endLine).join('\n');
-            relevantCode += '\n\n';
-            console.log(`Read ${endLine - startLine} lines from ${filePath}`);
-        } catch (error) {
-            console.error(`Error reading file ${filePath}: ${error}`);
+    for (const frame of stackFrames) {
+        let filePath = frame.file;
+
+        // Check if the path is relative
+        if (!path.isAbsolute(filePath) && vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+            filePath = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, filePath).fsPath;
         }
+
+        if (!fileCache[filePath]) {
+            console.log('Attempting to read file:', filePath);
+            try {
+                const fileContent = await fs.readFile(filePath, 'utf-8');
+                fileCache[filePath] = fileContent.split('\n');
+                console.log(`File ${filePath} read and cached`);
+            } catch (error) {
+                console.error(`Error reading file ${filePath}: ${error}`);
+                continue; // Skip to the next frame if we can't read this file
+            }
+        }
+
+        const lines = fileCache[filePath];
+        const startLine = Math.max(0, frame.line - 5);
+        const endLine = Math.min(lines.length, frame.line + 5);
+        relevantCode += `File: ${frame.file}\n`;
+        relevantCode += lines.slice(startLine, endLine).join('\n');
+        relevantCode += '\n\n';
+        console.log(`Extracted ${endLine - startLine} lines from ${filePath}`);
     }
+
     console.log('Exiting extractRelevantCode function');
     return relevantCode;
 }
