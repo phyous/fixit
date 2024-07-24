@@ -28,6 +28,17 @@ export class LlmClient {
     
         this.client = new OpenAI({ apiKey });
     }
+
+    private generatePrompt(stackTrace: string, relevantCode: string): string {
+        return `Given the following stack trace and relevant code, suggest a fix for the error:
+        
+        Stack Trace:\n${stackTrace}\n
+        
+        Relevant Code:\n${relevantCode}
+
+        For any code blocks cited - include the langaue in the markdown code block
+        `;
+    }
     
     public getFixRecommendation(stackTrace: string, relevantCode: string): Promise<AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>> {
         if (!this.client) {
@@ -35,6 +46,8 @@ export class LlmClient {
         }
 
         console.log('Entering getFixRecommendation function');
+        console.log('stackTrace:', stackTrace);
+        console.log('relevantCode:', relevantCode);
         const prompt = `Given the following stack trace and relevant code, suggest a fix for the error:\n\nStack Trace:\n${stackTrace}\n\nRelevant Code:\n${relevantCode}`;
 
         console.log('Sending request to OpenAI API');

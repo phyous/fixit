@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { LlmClient } from './llm';
+import { getWebviewContent } from './webview';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Entering activate function');
@@ -23,34 +24,34 @@ export function activate(context: vscode.ExtensionContext) {
         // Register command for editor
         let editorCommand = vscode.commands.registerCommand('extension.analyzeStackTrace', async () => {
             console.log('Command extension.analyzeStackTrace triggered from editor');
-            await handleStackTraceAnalysis(llmClient);
+            await handleStackTraceAnalysis(context, llmClient);
         });
 
         // Register command for terminal
-		let terminalCommand = vscode.commands.registerCommand('extension.analyzeStackTraceFromTerminal', async () => {
-			console.log('Command extension.analyzeStackTraceFromTerminal triggered from terminal');
-			try {
-				const activeTerminal = vscode.window.activeTerminal;
-				if (!activeTerminal) {
-					vscode.window.showErrorMessage('No active terminal found.');
-					return;
-				}
-		
-				// Request the terminal to copy the selection
-				await vscode.commands.executeCommand('workbench.action.terminal.copySelection');
-				
-				// Read from clipboard
-				const selection = await vscode.env.clipboard.readText();
-				
-				if (selection && selection.trim()) {
-					await analyzeStackTrace(llmClient, selection.trim());
-				} else {
-					vscode.window.showErrorMessage('No text selected in the terminal. Please highlight the stack trace first.');
-				}
-			} catch (error) {
-				vscode.window.showErrorMessage('Failed to read terminal selection: ' + error);
-			}
-		});
+        let terminalCommand = vscode.commands.registerCommand('extension.analyzeStackTraceFromTerminal', async () => {
+            console.log('Command extension.analyzeStackTraceFromTerminal triggered from terminal');
+            try {
+                const activeTerminal = vscode.window.activeTerminal;
+                if (!activeTerminal) {
+                    vscode.window.showErrorMessage('No active terminal found.');
+                    return;
+                }
+        
+                // Request the terminal to copy the selection
+                await vscode.commands.executeCommand('workbench.action.terminal.copySelection');
+                
+                // Read from clipboard
+                const selection = await vscode.env.clipboard.readText();
+                
+                if (selection && selection.trim()) {
+                    await analyzeStackTrace(context, llmClient, selection.trim());
+                } else {
+                    vscode.window.showErrorMessage('No text selected in the terminal. Please highlight the stack trace first.');
+                }
+            } catch (error) {
+                vscode.window.showErrorMessage('Failed to read terminal selection: ' + error);
+            }
+        });
 
         context.subscriptions.push(editorCommand, terminalCommand);
         console.log('Extension activation completed.');
@@ -60,7 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Exiting activate function');
 }
 
-async function handleStackTraceAnalysis(llmClient: LlmClient) {
+async function handleStackTraceAnalysis(context: vscode.ExtensionContext, llmClient: LlmClient) {
     try {
         console.log('Activating extension...');
         console.log('Current active editor:', vscode.window.activeTextEditor ? 'exists' : 'does not exist');
@@ -76,7 +77,7 @@ async function handleStackTraceAnalysis(llmClient: LlmClient) {
             console.log('Highlighted text length:', highlightedText.length);
             console.log('Analyzing stack trace...');
             if (llmClient) {
-                await analyzeStackTrace(llmClient, highlightedText);
+                await analyzeStackTrace(context, llmClient, highlightedText);
                 console.log('Fix recommendation generated.');
             } else {
                 vscode.window.showErrorMessage('OpenAI client is not initialized. Please check your API key in the settings.');
@@ -127,7 +128,7 @@ async function waitForActiveTextEditor(): Promise<vscode.TextEditor | undefined>
     });
 }
 
-async function analyzeStackTrace(llmClient: LlmClient, stackTrace: string) {
+async function analyzeStackTrace(context: vscode.ExtensionContext, llmClient: LlmClient, stackTrace: string) {
     console.log('Entering analyzeStackTrace function');
     try {
         const stackFrames = parseStackTrace(stackTrace);
@@ -135,19 +136,27 @@ async function analyzeStackTrace(llmClient: LlmClient, stackTrace: string) {
         const relevantCode = await extractRelevantCode(stackFrames);
         console.log('Extracted relevant code length:', relevantCode.length);
 
-        const outputChannel = vscode.window.createOutputChannel('Stack Trace Analysis');
-        outputChannel.clear();
-        outputChannel.show();
-        outputChannel.appendLine('Analyzing stack trace...');
+        const panel = vscode.window.createWebviewPanel(
+            'stackTraceAnalysis',
+            'FixIt',
+            vscode.ViewColumn.Two,
+            {
+                enableScripts: true
+            }
+        );
+
+        panel.webview.html = getWebviewContent('Analyzing stack trace...');
 
         const stream = await llmClient.getFixRecommendation(stackTrace, relevantCode);
         
+        let markdown = '';
         for await (const chunk of stream) {
             const content = chunk.choices[0]?.delta?.content || '';
-            outputChannel.append(content);
+            markdown += content;
+            panel.webview.html = getWebviewContent(markdown);
         }
 
-        console.log('Fix recommendation streamed to output channel');
+        console.log('Fix recommendation streamed to webview');
     } catch (error) {
         console.error('Error in analyzeStackTrace:', error);
         vscode.window.showErrorMessage(`Error analyzing stack trace: ${error}`);
@@ -159,10 +168,9 @@ function parseStackTrace(stackTrace: string): { file: string; line: number; lang
     console.log('Parsing stack trace...');
     const lines = stackTrace.split('\n');
     console.log('Number of lines in stack trace:', lines.length);
-	// print the lines
-	lines.forEach(line => {
-		console.log(line);
-	});
+    lines.forEach(line => {
+        console.log(line);
+    });
 
     return lines
         .map(line => {
@@ -215,6 +223,11 @@ function parseStackTrace(stackTrace: string): { file: string; line: number; lang
         );
 }
 
+// Set the maximum number of lines to extract from each file in either direction from the stack trace location
+// e.g: If the stack trace location is on line 100, and MAX_LINE_LIMIT is set to 500, 
+// the relevant code will be extracted from lines 950 to 1050
+let MAX_LINE_LIMIT = 500;
+
 async function extractRelevantCode(stackFrames: { file: string; line: number }[]): Promise<string> {
     console.log('Entering extractRelevantCode function');
     let relevantCode = '';
@@ -241,8 +254,8 @@ async function extractRelevantCode(stackFrames: { file: string; line: number }[]
         }
 
         const lines = fileCache[filePath];
-        const startLine = Math.max(0, frame.line - 5);
-        const endLine = Math.min(lines.length, frame.line + 5);
+        const startLine = Math.max(0, frame.line - MAX_LINE_LIMIT);
+        const endLine = Math.min(lines.length, frame.line + MAX_LINE_LIMIT);
         relevantCode += `File: ${frame.file}\n`;
         relevantCode += lines.slice(startLine, endLine).join('\n');
         relevantCode += '\n\n';
@@ -253,15 +266,6 @@ async function extractRelevantCode(stackFrames: { file: string; line: number }[]
     return relevantCode;
 }
 
-function displayResults(fixRecommendation: string) {
-    console.log('Entering displayResults function');
-    const outputChannel = vscode.window.createOutputChannel('Stack Trace Analysis');
-    outputChannel.clear();
-    outputChannel.appendLine('Fix Recommendation:');
-    outputChannel.appendLine(fixRecommendation);
-    outputChannel.show();
-    console.log('Results displayed in output channel');
-}
 
 export function deactivate() {
     console.log('Extension deactivated');
