@@ -3,7 +3,7 @@
 FixIt is a Visual Studio Code extension that helps developers quickly analyze and fix errors by providing intelligent recommendations based on stack traces.
 
 // Add GIF demo in example.gif
-![App Demo](./example.gif)
+![App Demo](images/example.gif)
 
 ## Features
 
@@ -21,7 +21,7 @@ FixIt is a Visual Studio Code extension that helps developers quickly analyze an
 
 1. Install the FixIt extension from the Visual Studio Code Marketplace
 2. Restart Visual Studio Code
-3. Configure your OpenAI API key in the extension settings
+3. Configure your OpenAI API key in the extension settings under `fixit.apiKey`
 
 ## Usage
 
