@@ -18,7 +18,7 @@ export function getWebviewContent(markdown: string) {
                 background-color: var(--vscode-editor-background);
                 margin: 0;
                 padding: 20px;
-                font-size: 14px;  /* Reduced from default 16px */
+                font-size: 12px;
             }
             .markdown-body {
                 box-sizing: border-box;
@@ -26,6 +26,7 @@ export function getWebviewContent(markdown: string) {
                 max-width: 980px;
                 margin: 0 auto;
                 padding: 45px;
+                font-size: 12px;
             }
             @media (max-width: 767px) {
                 .markdown-body {
@@ -36,11 +37,11 @@ export function getWebviewContent(markdown: string) {
                 display: block;
                 overflow-x: auto;
                 padding: 1em;
-                font-size: 13px;  /* Slightly smaller font for code blocks */
+                font-size: 11px;
             }
             code.hljs {
                 padding: 3px 5px;
-                font-size: 13px;  /* Consistent font size for inline code */
+                font-size: 11px;
             }
             /* Adjust heading sizes */
             .markdown-body h1 { font-size: 1.8em; }
